@@ -1,0 +1,23 @@
+name: Canonical CLI boundary
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jiro4989/setup-nim-action@v2
+        with:
+          nim-version: '2.2.4'
+      - run: sudo apt-get update && sudo apt-get install -y libpcre3
+      - uses: actions/checkout@v4
+        with:
+          repository: lost-rob0t/starintel-doc.nim
+          ref: 827f2c072e9893561a1925c47f898458bafd6759
+          path: .canonical-runtime
+      - run: nim c -r --path:.canonical-runtime/src tests/test_canonical.nim
+      - run: |
+          nim c --path:.canonical-runtime/src -o:/tmp/test-target-output tests/test_target_output.nim
+          /tmp/test-target-output > /tmp/targets.ndjson
+          python -c 'import json; rows=[json.loads(l) for l in open("/tmp/targets.ndjson")]; assert [r["target"] for r in rows]==["one.invalid","two.invalid"]; assert len({r["id"] for r in rows})==2'

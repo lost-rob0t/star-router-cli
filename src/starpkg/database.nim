@@ -2,7 +2,7 @@ import mycouch
 import json
 import parsecfg
 import asyncdispatch
-import starintel_doc
+import canonical_document
 import times
 import strutils
 import cligen
@@ -133,7 +133,7 @@ proc init*(configPath: string=DEFAULT_CONFIG) =
   "views": {
     "byDate": {
       "reduce": "_count",
-      "map": "function(doc) {\n  var date = new Date(doc.date_added * 1000);\n  var year = date.getUTCFullYear();\n  var month = date.getUTCMonth() + 1; // Months are 0-based\n  var day = date.getUTCDate();\n  var dateStr = month + \"-\" + day + \"-\" + year;\n  emit(dateStr, 1);\n}"
+      "map": "function(doc) {\n  var date = new Date(doc.createdAt * 1000);\n  var year = date.getUTCFullYear();\n  var month = date.getUTCMonth() + 1; // Months are 0-based\n  var day = date.getUTCDate();\n  var dateStr = month + \"-\" + day + \"-\" + year;\n  emit(dateStr, 1);\n}"
     },
     "byHour": {
       "reduce": "_count",
@@ -145,7 +145,7 @@ proc init*(configPath: string=DEFAULT_CONFIG) =
     },
     "byMonth": {
       "reduce": "_count",
-      "map": "function(doc) {\n  var date = new Date(doc.date_added * 1000);\n  var year = date.getUTCFullYear();\n  var month = date.getUTCMonth() + 1; // Months are 0-based\n  var dateStr = month + \"-\" + year;\n  emit(dateStr, 1);\n}"
+      "map": "function(doc) {\n  var date = new Date(doc.createdAt * 1000);\n  var year = date.getUTCFullYear();\n  var month = date.getUTCMonth() + 1; // Months are 0-based\n  var dateStr = month + \"-\" + year;\n  emit(dateStr, 1);\n}"
     }
   }
   }
@@ -192,34 +192,30 @@ proc search(db: CouchDBClient, q: string): JsonNode =
 
 
 proc insert*(db: CouchDBClient, config: StarConfig, docs: seq[JsonNode]) =
+  var stored: seq[JsonNode]
+  for doc in docs: stored.add(storageDocument(doc))
   try:
-    discard db.bulkDocs(config.database, %*docs)
+    discard db.bulkDocs(config.database, %*stored)
   except CouchDBError:
-    for doc in docs:
+    for doc in stored:
       discard db.createDoc(config.database, doc)
 
 
 proc loadData*(configPath: string, file: string, bulkSize: int = 500) {.async.} =
+  if bulkSize <= 0: raise newException(ValueError, "bulkSize must be positive")
   let f = open(file)
+  defer: f.close()
   let config = loadConfigFile(configPath)
   var db = newAsyncCouchDBClient(host=config.dbHost, port=config.dbPort)
   discard await db.cookieAuth(config.dbUser, config.dbPass)
   var docs: seq[JsonNode]
   for line in f.lines:
-    var bulkInserts: seq[Future[JsonNode]]
-    if docs.len == bulkSize:
-      bulkInserts.add db.bulkDocs(config.database, %*docs)
+    docs.add(storageDocument(line.parseJson))
+    if docs.len >= bulkSize:
+      discard await db.bulkDocs(config.database, %*docs)
       docs = @[]
-    else:
-      docs.add(line.parseJson)
-    for future in bulkInserts:
-      try:
-        discard await future
-      except CouchDBError as e:
-        discard
-  if docs.len != 0:
+  if docs.len > 0:
     discard await db.bulkDocs(config.database, %*docs)
-    docs = @[]
 
 proc insert_data*(configPath: string, file: string, bulkSize: int = 500) =
   waitFor loadData(configPath, file, bulkSize)

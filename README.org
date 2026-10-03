@@ -59,3 +59,13 @@ To create a new target
 #+begin_src shell
 star target -a <bot name> -t <bot input> -o <extra json options if needed>
 #+end_src
+
+* Canonical StarIntel 0.10.1
+Target output uses flat =id=, =schemaVersion= and generated canonical fields.
+Bulk targets use each input line and retain false/options values. Database imports
+validate every record before adding CouchDB =_id=; canonical =id= is retained.
+Malformed or historical documents are rejected, not relabeled. Bulk imports now
+retain records at batch boundaries and propagate write failures.
+Requires the immutable Nim consumer at =827f2c072e9893561a1925c47f898458bafd6759=
+(starintel-doc.nim PR #15), whose authority is StarLang 0.10.1.
+Test with =nim c -r --path:<starintel-doc.nim>/src tests/test_canonical.nim=.

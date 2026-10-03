@@ -10,9 +10,9 @@ bin           = @["star"]
 
 # Dependencies
 
-requires "nim >= 1.6.14"
+requires "nim >= 2.0.0"
 requires "mycouch"
-requires "https://github.com/lost-rob0t/starintel-doc.nim.git >= 0.7.3"
+requires "https://github.com/lost-rob0t/starintel-doc.nim.git#827f2c072e9893561a1925c47f898458bafd6759"
 # Broken!
 # Will Be re-added, just a temp fix
 # requires "https://github.com/lost-rob0t/starRouter.git"
