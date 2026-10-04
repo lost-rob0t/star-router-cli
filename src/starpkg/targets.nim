@@ -1,53 +1,22 @@
-import starintel_doc
-import std/json
+import std/[json, md5]
+import ./documents
 
+proc createTarget*(dataset, value, actor: string, delay = 0, recurring = false,
+                   options = newJObject()): JsonNode =
+  result = %*{"id": $toMD5(dataset & value & actor & $recurring & $delay),
+              "dataset": dataset, "dtype": "target", "schemaVersion": "0.10.1",
+              "target": value, "actor": actor, "delay": delay,
+              "recurring": recurring, "options": options}
+  validateDocument(result)
 
-proc target*(dataset, target, actor: string, bulk, recurring: bool = false,
-             input: string = "", options: string = "", delay: int = 0) =
-  var
-    outputFile: File
-    inscopeFile: File
-    outscopeFile: File
-    option: JsonNode
-    #scope: Scope
-
-  # TODO remove this into its own thing
-  # if isScope:
-  #   scope = newScope(scopeName, scopeDescription)
-
-  # if inscope.len > 0 and isScope:
-  #   inscopeFile = open(inscope, fmRead)
-  #   defer: inscopeFile.close()
-  #   for line in inscopeFile.lines:
-  #     scope.inScopeAdd(line)
-
-  # if outscope.len > 0 and isScope:
-  #   outscopeFile = open(outScope, fmRead)
-  #   defer: outscopeFile.close()
-  #   for line in outscopeFile.lines:
-  #     scope.outScopeAdd(line)
-
-
-  if options.len == 0:
-    option = newJobject()
+proc target*(dataset, target, actor: string, bulk = false, recurring = false,
+             input = "", options = "", delay = 0) =
+  let option = if options.len == 0: newJObject() else: parseJson(options)
+  if bulk:
+    let path = if input.len > 0: input else: target
+    let stream = open(path)
+    defer: stream.close()
+    for line in stream.lines:
+      echo createTarget(dataset, line, actor, delay, recurring, option)
   else:
-    option = options.parseJson
-  #if isScope:
-  #  option = %*scope
-  if bulk == true:
-    # NOTE a different script needs to be made it can read a bunch of targets, but only one set of options is set.
-    # the targets file should be one target per line, only supports txt files
-    let targetFile = open(input, fmRead)
-    defer: targetFile.close
-    for line in targetFile.lines:
-      var jdoc = %*(newTarget(dataset, target, actor, delay, recurring, option))
-      jdoc["_id"] = jdoc["id"]
-      jdoc.delete("id")
-      echo $jdoc
-
-  else:
-    let target = newTarget(dataset, target, actor, delay, recurring, option)
-    var jdoc = %*target
-    jdoc["_id"] = newJString(target.id)
-    jdoc.delete("id")
-    echo $jdoc
+    echo createTarget(dataset, target, actor, delay, recurring, option)

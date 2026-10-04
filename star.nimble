@@ -10,12 +10,10 @@ bin           = @["star"]
 
 # Dependencies
 
-requires "nim >= 1.6.14"
+requires "nim >= 2.0.0"
 requires "mycouch"
-requires "https://github.com/lost-rob0t/starintel-doc.nim.git >= 0.7.3"
-# Broken!
-# Will Be re-added, just a temp fix
-# requires "https://github.com/lost-rob0t/starRouter.git"
+requires "https://github.com/lost-rob0t/starintel-doc.nim.git#827f2c072e9893561a1925c47f898458bafd6759"
+requires "https://github.com/lost-rob0t/starRouter.git#20e5c9e8bf49660fd230d8e7306dd9209648f6e9"
 requires "cligen"
 
 task install, "installs star-cli":

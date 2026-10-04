@@ -2,12 +2,13 @@ import mycouch
 import json
 import parsecfg
 import asyncdispatch
-import starintel_doc
+import documents
 import times
 import strutils
 import cligen
 import tables
 import os
+import std/tempfiles
 import config
 
 
@@ -200,26 +201,37 @@ proc insert*(db: CouchDBClient, config: StarConfig, docs: seq[JsonNode]) =
 
 
 proc loadData*(configPath: string, file: string, bulkSize: int = 500) {.async.} =
-  let f = open(file)
+  if bulkSize <= 0: raise newException(ValueError, "bulkSize must be positive")
+  # Snapshot validated physical records before authentication or writes.
+  # The temporary NDJSON file keeps memory bounded to one batch.
+  let (snapshot, snapshotPath) = createTempFile("star-cli-import-", ".ndjson")
+  defer:
+    snapshot.close()
+    removeFile(snapshotPath)
+  let stream = open(file)
+  try:
+    for line in stream.lines:
+      snapshot.writeLine($couchDocument(parseJson(line)))
+  finally:
+    stream.close()
+  snapshot.flushFile()
+  snapshot.setFilePos(0)
   let config = loadConfigFile(configPath)
   var db = newAsyncCouchDBClient(host=config.dbHost, port=config.dbPort)
   discard await db.cookieAuth(config.dbUser, config.dbPass)
-  var docs: seq[JsonNode]
-  for line in f.lines:
-    var bulkInserts: seq[Future[JsonNode]]
-    if docs.len == bulkSize:
-      bulkInserts.add db.bulkDocs(config.database, %*docs)
-      docs = @[]
-    else:
-      docs.add(line.parseJson)
-    for future in bulkInserts:
-      try:
-        discard await future
-      except CouchDBError as e:
-        discard
-  if docs.len != 0:
-    discard await db.bulkDocs(config.database, %*docs)
-    docs = @[]
+  var batch: seq[JsonNode]
+  proc upload() {.async.} =
+    if batch.len == 0: return
+    let response = await db.bulkDocs(config.database, %batch)
+    if response.kind == JArray:
+      for item in response:
+        if item.kind == JObject and item.hasKey("error"):
+          raise newException(ValueError, "CouchDB bulk document rejected: " & $item)
+    batch.setLen(0)
+  for line in snapshot.lines:
+    batch.add(parseJson(line))
+    if batch.len == bulkSize: await upload()
+  await upload()
 
 proc insert_data*(configPath: string, file: string, bulkSize: int = 500) =
   waitFor loadData(configPath, file, bulkSize)
