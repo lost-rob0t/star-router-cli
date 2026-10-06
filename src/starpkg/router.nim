@@ -1,7 +1,7 @@
 import starRouter
 import database
 import std/[asyncdispatch, json]
-from starintel_doc import Target, load, dump
+import documents
 import strformat
 
 proc publishDoc*(client: Client, doc: JsonNode, topic: string) {.async.} =
@@ -9,8 +9,9 @@ proc publishDoc*(client: Client, doc: JsonNode, topic: string) {.async.} =
   await client.emit(msg)
 
 proc publishTarget(client: Client, doc: JsonNode, actor: string) {.async.} =
-  let msg = newMessage(doc.to(Target), proto.target, "", actor)
-  echo msg.data.target
+  validateDocument(doc)
+  if doc["dtype"].getStr != "target": raise newException(ValueError, "target input requires a target document")
+  let msg = newMessage(doc, proto.target, "", actor)
   await client.emit(msg)
 
 proc publishDocuments*(apiAddress: string = "tcp://127.0.0.1:6001", subAddress: string = "tcp://127.0.0.1:6000", isTarget: bool = false, topic: string = "", actor: string = "", path: string) =

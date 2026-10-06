@@ -1,61 +1,58 @@
-#+title: Readme
+#+title: Star CLI
 * Star
-Star is the management tool to manage operations and configure the starintel project
+Star creates automation targets and imports StarIntel NDJSON into CouchDB.
 
-Star also lets you interact with the starRouter message queue.
-** Notice
-The starRouter has been deprecated in favor of star-server.
-Stuff like "init" will be removed as star-server now handles that.
-
+** Document contract
+StarLang is the sole source of truth for the wire specification. The complete
+generated 0.10.1 release is vendored under ~schemas/starintel-0.10.1~ with its
+immutable upstream commit and file hashes in ~schema/starintel-schema.lock.json~.
+The maintained Nim document library and StarRouter are pinned to tested commits;
+the build verifies their release artifacts against this application's lock. The pinned\nmanifest contains 90 persistent routed documents and 33 transient embedded\ndefinitions; imports validate raw NDJSON before CouchDB authentication or writes.\n
+~star target~ emits flat canonical documents with ~id~, ~dtype~, ~dataset~ and
+~schemaVersion~. Target options retain JSON false, null, arrays and opaque objects.
+The options value itself must be an object as required by the generated schema.
+The explicit historical 0.9.0 import path uses the archived compatibility schema.
 
 ** Installation
 #+begin_src shell
-git clone https://github.com/lost-rob0t/star-cli.git star/ && cd star
-nimble install
+git clone https://github.com/lost-rob0t/star-router-cli.git
+cd star-router-cli
+nix build
+./result/bin/star --help
 #+end_src
 
-*** Configuration file
-after you have installed ~star~ edit the file "config.ini" and put the file in ~~/.config/starintel/config.ini~
+Nim 2 users can also install the pinned dependencies with ~nimble install~.
+Copy ~config.ini~ to ~~/.config/starintel/config.ini~ and set the database endpoint
+and credentials, or pass ~--configPath~ to the import command.
 
 ** Usage
-Get help
-#+begin_src sh :results output replace
-./star --help
-#+end_src
-
-#+RESULTS:
-#+begin_example
-Usage:
-  star {SUBCMD}  [sub-command options & parameters]
-where {SUBCMD} is one of:
-  help              print comprehensive or per-cmd help
-  target
-  init
-  insert_data
-  publishDocuments
-  subscribe
-
-star {-h|--help} or with no args at all prints this message.
-star --help-syntax gives general cligen syntax help.
-Run "star {help SUBCMD|SUBCMD --help}" to see help for just SUBCMD.
-Run "star help" to get *comprehensive* help.
-#+end_example
-
-#+begin_src sh :results output replace
-star <subCommand> --help
-#+end_src
-
-*** Init database
-DEPRECATED
-#+begin_src shell
-star init
-#+end_src
-
-*** Create target json
-Targets are a document that holds configuration for automations
-
-To create a new target
+The executable exposes ~target~, ~init~ and ~insert_data~. Each accepts ~--help~.
+The Router command module remains a prototype and is checked during the build.
 
 #+begin_src shell
-star target -a <bot name> -t <bot input> -o <extra json options if needed>
+star target --dataset=example --actor=certsh --target=example.com --options='{"enabled":false}'
+star target --dataset=example --actor=certsh --target=targets.txt --bulk
+star insert_data --configPath=config.ini --file=documents.ndjson --bulkSize=500
 #+end_src
+
+Bulk target generation uses each line of the input file. Import validates the
+entire input before making HTTP requests and submits every record across batch
+boundaries. CouchDB storage translates ~id~ and ~rev~ into ~_id~ and ~_rev~;
+the wire format remains the generated canonical contract. Import failures and
+CouchDB per-record errors cause a nonzero exit status.
+
+~init~ retains the historical database setup command; star-server manages modern
+server initialization.
+
+** Validation and release updates
+#+begin_src shell
+python3 scripts/sync-starintel-schema.py
+nix flake check -L
+#+end_src
+
+The source check compares the complete release against its immutable StarLang
+commit. The Nix check builds the executable, checks the Router prototype module,
+verifies dependency/release agreement, and exercises the real executable through
+a local Couch HTTP endpoint before and after installation. Update releases with
+~python3 scripts/sync-starintel-schema.py --commit <full-StarLang-commit>~ and
+repin the maintained runtimes to the same release.
