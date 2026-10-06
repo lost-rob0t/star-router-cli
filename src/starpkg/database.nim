@@ -211,7 +211,7 @@ proc loadData*(configPath: string, file: string, bulkSize: int = 500) {.async.} 
   let stream = open(file)
   try:
     for line in stream.lines:
-      snapshot.writeLine($couchDocument(parseJson(line)))
+      snapshot.writeLine($couchDocument(parseWireJson(line)))
   finally:
     stream.close()
   snapshot.flushFile()
@@ -229,7 +229,7 @@ proc loadData*(configPath: string, file: string, bulkSize: int = 500) {.async.} 
           raise newException(ValueError, "CouchDB bulk document rejected: " & $item)
     batch.setLen(0)
   for line in snapshot.lines:
-    batch.add(parseJson(line))
+    batch.add(parseWireJson(line))
     if batch.len == bulkSize: await upload()
   await upload()
 

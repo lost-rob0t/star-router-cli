@@ -1,7 +1,7 @@
 {
   description = "Star CLI consuming the generated StarLang document contract";
   inputs = {
-    star-router.url = "github:lost-rob0t/starRouter/20e5c9e8bf49660fd230d8e7306dd9209648f6e9";
+    star-router.url = "github:lost-rob0t/starRouter/f46fdf864e5284e2f690c11b24ffd73d7d161c5b";
     nixpkgs.follows = "star-router/nixpkgs";
     starintel-doc.follows = "star-router/starintel-doc";
     mycouch = { url = "github:hamidb80/mycouch/8e1b740c623c21e4b180f2d139fa07e6d6a1eff6"; flake = false; };

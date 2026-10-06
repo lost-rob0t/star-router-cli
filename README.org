@@ -7,8 +7,7 @@ StarLang is the sole source of truth for the wire specification. The complete
 generated 0.10.1 release is vendored under ~schemas/starintel-0.10.1~ with its
 immutable upstream commit and file hashes in ~schema/starintel-schema.lock.json~.
 The maintained Nim document library and StarRouter are pinned to tested commits;
-the build verifies their release artifacts against this application's lock.
-
+the build verifies their release artifacts against this application's lock. The pinned\nmanifest contains 90 persistent routed documents and 33 transient embedded\ndefinitions; imports validate raw NDJSON before CouchDB authentication or writes.\n
 ~star target~ emits flat canonical documents with ~id~, ~dtype~, ~dataset~ and
 ~schemaVersion~. Target options retain JSON false, null, arrays and opaque objects.
 The options value itself must be an object as required by the generated schema.

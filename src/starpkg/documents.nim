@@ -4,6 +4,7 @@ import starintel_doc/canonical as canonical
 import starintel_doc/v090 as historical
 const Compatibility = staticRead("../../schemas/starintel-0.10.1/compatibility.json")
 const HistoricalSchema = staticRead("../../schemas/legacy/starintel-doc-v0.9.0.schema.json")
+proc parseWireJson*(text: string): JsonNode = canonical.parseWireJson(text)
 proc validateDocument*(document: JsonNode) =
   if document.kind != JObject: raise newException(ValueError, "document must be an object")
   if document.hasKey("schemaVersion"):
